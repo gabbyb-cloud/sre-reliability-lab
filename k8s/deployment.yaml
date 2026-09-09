@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sre-reliability-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sre-reliability-lab
+  template:
+    metadata:
+      labels:
+        app: sre-reliability-lab
+    spec:
+      containers:
+        - name: sre-reliability-lab
+          image: sre-reliability-lab:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: FAIL_MODE
+              value: "false"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
