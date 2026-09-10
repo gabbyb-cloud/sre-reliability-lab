@@ -30,11 +30,6 @@ def health() -> dict[str, str]:
 
 @app.get("/ready")
 def ready(response: Response) -> dict[str, str]:
-    if fail_mode_enabled():
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        REQUESTS.labels(path="/ready", status="503").inc()
-        return {"status": "not-ready"}
-
     REQUESTS.labels(path="/ready", status="200").inc()
     return {"status": "ready"}
 

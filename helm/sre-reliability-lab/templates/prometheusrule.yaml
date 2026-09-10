@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "sre-reliability-lab.fullname" . }}
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: sre-reliability-lab
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(increase(sre_lab_requests_total{path="/work",status=~"5.."}[2m]))
+              /
+              clamp_min(
+                sum(increase(sre_lab_requests_total{path="/work"}[2m])),
+                1
+              )
+            ) > 0.20
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate on /work"
+            description: "More than 20% of /work requests have returned 5xx responses for at least 1 minute."
