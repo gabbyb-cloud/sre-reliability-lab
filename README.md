@@ -2,6 +2,8 @@
 
 A fully local, $0 Site Reliability Engineering lab demonstrating containerization, Kubernetes operations, Helm, infrastructure as code, observability, SLOs, alerting, controlled failure injection, incident response, and recovery verification.
 
+[![Validate](https://github.com/gabbyb-cloud/sre-reliability-lab/actions/workflows/validate.yml/badge.svg)](https://github.com/gabbyb-cloud/sre-reliability-lab/actions/workflows/validate.yml)
+
 The application itself is intentionally small so the focus stays on operating and observing a service reliably.
 
 ## What this project demonstrates
@@ -21,6 +23,7 @@ The application itself is intentionally small so the focus stays on operating an
 - Documenting operational response with a runbook
 - Writing a blameless incident postmortem
 - Managing an existing Kubernetes namespace with Terraform
+- Validating Python, Docker, Helm, and Terraform changes with GitHub Actions
 
 ## Architecture
 
@@ -407,10 +410,27 @@ No changes. Your infrastructure matches the configuration.
 
 This demonstrates adopting existing infrastructure into Terraform management without deleting or recreating it.
 
+## Continuous validation
+
+GitHub Actions validates changes on pushes and pull requests targeting `main`.
+
+The workflow checks:
+
+- Python source compilation
+- Docker image build
+- Helm chart linting
+- Terraform formatting
+- Terraform initialization and validation
+
+This keeps the repository's application, container, chart, and infrastructure configuration continuously verifiable without requiring paid cloud infrastructure.
+
 ## Project structure
 
 ```text
 sre-reliability-lab/
+├── .github/
+│   └── workflows/
+│       └── validate.yml
 ├── app/
 │   └── main.py
 ├── docs/
@@ -418,6 +438,9 @@ sre-reliability-lab/
 │   └── RUNBOOK.md
 ├── helm/
 │   └── sre-reliability-lab/
+├── k8s/
+│   ├── deployment.yaml
+│   └── service.yaml
 ├── terraform/
 │   └── main.tf
 ├── .dockerignore
