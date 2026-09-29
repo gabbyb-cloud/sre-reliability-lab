@@ -6,6 +6,25 @@ A fully local, $0 Site Reliability Engineering lab demonstrating containerizatio
 
 The application itself is intentionally small so the focus stays on operating and observing a service reliably.
 
+> **Reliability workflow:** Deploy → Observe → Define SLO → Detect → Alert → Investigate → Recover → Verify → Document
+
+## Reliability exercise at a glance
+
+| Area | Evidence in this lab |
+| --- | --- |
+| Service operation | FastAPI containerized with Docker and deployed to a local kind Kubernetes cluster with Helm |
+| Health management | Kubernetes liveness and readiness probes using `/health` and `/ready` |
+| Observability | Prometheus metrics, `ServiceMonitor` discovery, PromQL, and Grafana visualization |
+| Reliability target | 99% availability SLO for successful `/work` requests |
+| Failure testing | Controlled HTTP 500 injection while keeping readiness healthy |
+| Detection | `HighErrorRate` alert for sustained elevated 5xx responses |
+| Recovery | Failure mode disabled, rollout verified, service behavior rechecked, and alert resolution confirmed |
+| Incident response | Operational runbook plus a blameless incident postmortem |
+| Infrastructure | Existing Kubernetes namespace adopted into Terraform state |
+| Continuous validation | GitHub Actions checks Python, Docker, Helm, and Terraform changes |
+
+This creates a complete reliability exercise rather than stopping at deployment: the service is observed, deliberately degraded, detected through monitoring, recovered, verified, and documented.
+
 ## What this project demonstrates
 
 - Containerizing a Python FastAPI service with Docker
@@ -451,9 +470,9 @@ sre-reliability-lab/
 └── requirements.txt
 ```
 
-## Reliability exercise demonstrated
+## Engineering takeaway
 
-This lab completes an end-to-end reliability workflow:
+This lab intentionally connects deployment work to the operational responsibilities that follow it:
 
 ```text
 Deploy
