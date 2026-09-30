@@ -1,204 +1,78 @@
 # SRE Reliability Lab
 
-A fully local, $0 Site Reliability Engineering lab demonstrating containerization, Kubernetes operations, Helm, infrastructure as code, observability, SLOs, alerting, controlled failure injection, incident response, and recovery verification.
+A fully local reliability lab for practicing how to deploy, observe, break, recover, and verify a service using Kubernetes, Helm, Prometheus/Grafana, Terraform, and GitHub Actions.
 
 [![Validate](https://github.com/gabbyb-cloud/sre-reliability-lab/actions/workflows/validate.yml/badge.svg)](https://github.com/gabbyb-cloud/sre-reliability-lab/actions/workflows/validate.yml)
+![Python](https://img.shields.io/badge/Python-3.12-blue)
 
-The application itself is intentionally small so the focus stays on operating and observing a service reliably.
+## Why it exists
 
-> **Reliability workflow:** Deploy → Observe → Define SLO → Detect → Alert → Investigate → Recover → Verify → Document
+I built this lab to practice the part of engineering that starts after an application is deployed: knowing whether it is healthy, detecting when behavior degrades, understanding what failed, recovering safely, and checking that the system actually returned to normal.
 
-## Reliability exercise at a glance
-
-| Area | Evidence in this lab |
-| --- | --- |
-| Service operation | FastAPI containerized with Docker and deployed to a local kind Kubernetes cluster with Helm |
-| Health management | Kubernetes liveness and readiness probes using `/health` and `/ready` |
-| Observability | Prometheus metrics, `ServiceMonitor` discovery, PromQL, and Grafana visualization |
-| Reliability target | 99% availability SLO for successful `/work` requests |
-| Failure testing | Controlled HTTP 500 injection while keeping readiness healthy |
-| Detection | `HighErrorRate` alert for sustained elevated 5xx responses |
-| Recovery | Failure mode disabled, rollout verified, service behavior rechecked, and alert resolution confirmed |
-| Incident response | Operational runbook plus a blameless incident postmortem |
-| Infrastructure | Existing Kubernetes namespace adopted into Terraform state |
-| Continuous validation | GitHub Actions checks Python, Docker, Helm, and Terraform changes |
-
-This creates a complete reliability exercise rather than stopping at deployment: the service is observed, deliberately degraded, detected through monitoring, recovered, verified, and documented.
-
-## What this project demonstrates
-
-- Containerizing a Python FastAPI service with Docker
-- Running Kubernetes locally with kind
-- Packaging and deploying the application with Helm
-- Configuring Kubernetes liveness and readiness probes
-- Exposing Prometheus application metrics
-- Discovering the application with a `ServiceMonitor`
-- Monitoring the service with Prometheus and Grafana
-- Defining a 99% availability SLO
-- Creating a `HighErrorRate` Prometheus alert
-- Injecting a controlled HTTP 500 failure
-- Observing an alert transition from pending to firing
-- Recovering the service and verifying alert resolution
-- Documenting operational response with a runbook
-- Writing a blameless incident postmortem
-- Managing an existing Kubernetes namespace with Terraform
-- Validating Python, Docker, Helm, and Terraform changes with GitHub Actions
+The application is intentionally small. The point of the project is the operational workflow around it, not application complexity.
 
 ## Architecture
 
-```text
-FastAPI
-   |
-   v
-Docker image
-   |
-   v
-kind Kubernetes cluster
-   |
-   +--> Helm Deployment
-   |       |
-   |       v
-   |      Pod
-   |       |
-   |       v
-   |   Kubernetes Service
-   |       |
-   |       v
-   |    /metrics
-   |
-   +--> ServiceMonitor
-           |
-           v
-       Prometheus
-           |
-           +--> PromQL
-           |
-           +--> HighErrorRate alert
-           |
-           v
-         Grafana
-           |
-           v
-     99% Availability SLO
+```mermaid
+flowchart LR
+    Client[Client] --> Service[Kubernetes Service]
+    Service --> Pod[FastAPI Pod]
+
+    Helm[Helm Chart] --> Pod
+    Terraform[Terraform] --> Namespace[Kubernetes Namespace]
+
+    Pod -->|/metrics| ServiceMonitor[ServiceMonitor]
+    ServiceMonitor --> Prometheus[Prometheus]
+    Prometheus --> Grafana[Grafana]
+    Prometheus --> Alert[HighErrorRate Alert]
+
+    Failure[FAIL_MODE=true] --> Pod
+    Alert --> Response[Investigate and Recover]
+    Response --> Verify[Verify Service + Alert Resolution]
 ```
 
-## Application endpoints
+The service runs in a local `kind` Kubernetes cluster. Helm manages the application resources, Prometheus scrapes application metrics through a `ServiceMonitor`, Grafana visualizes service behavior, and Terraform manages the existing lab namespace.
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /health` | Liveness check |
-| `GET /ready` | Readiness check |
-| `GET /work` | Workload endpoint used for reliability testing |
-| `GET /metrics` | Prometheus metrics endpoint |
+A controlled failure mode makes `/work` return HTTP 500 while readiness remains healthy, which allows the lab to exercise application-level failure detection without making the Pod unavailable.
 
-The application exposes:
+## Key design decisions
 
-- `sre_lab_requests_total`
-- `sre_lab_request_duration_seconds`
+- **The application stays simple on purpose.** FastAPI provides only the endpoints needed to practice health checks, workload behavior, and Prometheus metrics.
+- **Readiness is kept healthy during failure injection.** This separates application errors from Kubernetes availability and lets Prometheus observe sustained 5xx behavior.
+- **The reliability target is explicit.** The lab defines a 99% availability SLO for successful `/work` requests rather than relying on vague ideas of “healthy.”
+- **Alerting is tied to measured behavior.** `HighErrorRate` fires when more than 20% of `/work` requests are 5xx over a 2-minute window for at least 1 minute.
+- **Recovery includes verification.** Turning failure mode off is not considered enough; the rollout, endpoint behavior, Prometheus data, and alert state are checked afterward.
+- **Operational work is documented.** The repository includes a runbook and a blameless postmortem so detection and recovery are treated as part of the system, not side notes.
 
-## Run locally
+## Quick start
 
-Create and activate a virtual environment:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-Install dependencies:
+Requirements: Docker, `kind`, `kubectl`, Helm, Terraform, and Git.
 
 ```bash
-pip install -r requirements.txt
-```
+git clone https://github.com/gabbyb-cloud/sre-reliability-lab.git
+cd sre-reliability-lab
 
-Start the service:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-Verify the endpoints:
-
-```bash
-curl -i http://127.0.0.1:8000/health
-curl -i http://127.0.0.1:8000/ready
-curl -i http://127.0.0.1:8000/work
-curl http://127.0.0.1:8000/metrics
-```
-
-## Build the Docker image
-
-```bash
 docker build -t sre-reliability-lab:local .
-```
-
-The container uses Python 3.12 and exposes port `8000`.
-
-## Local Kubernetes with kind
-
-Create the local Kubernetes cluster:
-
-```bash
 kind create cluster --name sre-lab
-```
-
-Load the locally built image into the kind node:
-
-```bash
 kind load docker-image sre-reliability-lab:local --name sre-lab
-```
 
-kind runs Kubernetes nodes as Docker containers, allowing the full lab to run locally without paid cloud infrastructure.
-
-## Deploy with Helm
-
-The Helm chart is stored under:
-
-```text
-helm/sre-reliability-lab/
-```
-
-Install the application:
-
-```bash
 helm install sre-reliability-lab \
   helm/sre-reliability-lab \
   --namespace sre-lab \
   --create-namespace
 ```
 
-Verify the Deployment:
+Verify the deployment:
 
 ```bash
 kubectl get pods -n sre-lab
 kubectl get services -n sre-lab
 ```
 
-Expected Pod state:
-
-```text
-READY   STATUS    RESTARTS
-1/1     Running   0
-```
-
-The chart also configures:
-
-- Liveness probe using `/health`
-- Readiness probe using `/ready`
-- ClusterIP Service on port `8000`
-- Prometheus `ServiceMonitor`
-- `HighErrorRate` Prometheus rule
-
-## Monitoring
-
-The lab uses `kube-prometheus-stack` for Prometheus, Grafana, Alertmanager, kube-state-metrics, and node-exporter.
-
-Install it with:
+Install the monitoring stack:
 
 ```bash
-helm repo add prometheus-community \
-  https://prometheus-community.github.io/helm-charts
-
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
 helm install monitoring \
@@ -207,231 +81,9 @@ helm install monitoring \
   --create-namespace
 ```
 
-Verify monitoring components:
+## Testing and validation
 
-```bash
-kubectl get pods -n monitoring
-```
-
-The application `ServiceMonitor` instructs Prometheus to scrape:
-
-```text
-/metrics
-```
-
-on the application's named `http` port.
-
-Prometheus successfully discovers the application target as:
-
-```text
-UP
-```
-
-## Availability SLO
-
-The lab defines one availability objective:
-
-> At least 99% of `/work` requests should return a successful HTTP 2xx response.
-
-### SLI
-
-The service level indicator measures:
-
-```text
-successful /work requests
--------------------------
-total /work requests
-```
-
-For the local low-traffic lab, the Grafana panel uses a 15-minute request window:
-
-```promql
-100 *
-sum(increase(sre_lab_requests_total{path="/work",status=~"2.."}[15m]))
-/
-sum(increase(sre_lab_requests_total{path="/work"}[15m]))
-```
-
-Grafana displays the result in the:
-
-```text
-Work Endpoint Availability
-```
-
-panel.
-
-Threshold:
-
-```text
-< 99%  = SLO missed
->= 99% = SLO met
-```
-
-## HighErrorRate alert
-
-The lab includes a Prometheus alert named:
-
-```text
-HighErrorRate
-```
-
-The alert triggers when more than 20% of `/work` requests return HTTP 5xx responses over a 2-minute window and the condition remains true for at least 1 minute.
-
-The rule is stored in the Helm chart and version-controlled with the application.
-
-Alert lifecycle demonstrated during testing:
-
-```text
-Inactive
-   |
-   v
-Pending
-   |
-   v
-Firing
-   |
-   v
-Resolved
-```
-
-## Controlled failure injection
-
-The service supports controlled failure testing through the `FAIL_MODE` environment variable.
-
-Normal behavior:
-
-```text
-FAIL_MODE=false
-
-/ready -> HTTP 200
-/work  -> HTTP 200
-```
-
-Failure behavior:
-
-```text
-FAIL_MODE=true
-
-/ready -> HTTP 200
-/work  -> HTTP 500
-```
-
-Keeping `/ready` healthy during the test allows the service to remain reachable while Prometheus observes application-level failures.
-
-Enable failure mode:
-
-```bash
-kubectl set env deployment/sre-reliability-lab \
-  -n sre-lab \
-  FAIL_MODE=true
-```
-
-Disable failure mode:
-
-```bash
-kubectl set env deployment/sre-reliability-lab \
-  -n sre-lab \
-  FAIL_MODE=false
-```
-
-Wait for the rollout:
-
-```bash
-kubectl rollout status deployment/sre-reliability-lab \
-  -n sre-lab \
-  --timeout=120s
-```
-
-During the controlled incident, sustained HTTP 500 traffic caused `HighErrorRate` to transition to:
-
-```text
-firing
-```
-
-After failure mode was disabled and the Prometheus lookback window cleared, the alert returned no active results.
-
-## Incident response
-
-Operational documentation is stored under:
-
-```text
-docs/
-├── RUNBOOK.md
-└── POSTMORTEM.md
-```
-
-### Runbook
-
-`docs/RUNBOOK.md` documents how to:
-
-- Inspect the Pod and Deployment
-- Port-forward to the service
-- Verify `/ready` and `/work`
-- Inspect the Prometheus error ratio
-- Disable controlled failure mode
-- Verify rollout recovery
-- Confirm alert resolution
-
-### Postmortem
-
-`docs/POSTMORTEM.md` documents the controlled incident, including:
-
-- Impact
-- Detection
-- Root cause
-- Resolution
-- Verification
-- Lessons learned
-- Follow-up actions
-
-## Terraform
-
-Terraform is intentionally minimal in this lab.
-
-It manages the existing:
-
-```text
-sre-lab
-```
-
-Kubernetes namespace using the HashiCorp Kubernetes provider.
-
-Configuration:
-
-```text
-terraform/main.tf
-```
-
-Initialize Terraform:
-
-```bash
-cd terraform
-terraform init
-```
-
-The namespace already existed before Terraform was introduced, so it was adopted into Terraform state:
-
-```bash
-terraform import kubernetes_namespace_v1.sre_lab sre-lab
-```
-
-Verify infrastructure state:
-
-```bash
-terraform plan
-```
-
-Expected result:
-
-```text
-No changes. Your infrastructure matches the configuration.
-```
-
-This demonstrates adopting existing infrastructure into Terraform management without deleting or recreating it.
-
-## Continuous validation
-
-GitHub Actions validates changes on pushes and pull requests targeting `main`.
+GitHub Actions validates the repository on pushes and pull requests targeting `main`.
 
 The workflow checks:
 
@@ -441,71 +93,99 @@ The workflow checks:
 - Terraform formatting
 - Terraform initialization and validation
 
-This keeps the repository's application, container, chart, and infrastructure configuration continuously verifiable without requiring paid cloud infrastructure.
+The reliability exercise itself is tested by deliberately switching the service into failure mode:
 
-## Project structure
-
-```text
-sre-reliability-lab/
-├── .github/
-│   └── workflows/
-│       └── validate.yml
-├── app/
-│   └── main.py
-├── docs/
-│   ├── POSTMORTEM.md
-│   └── RUNBOOK.md
-├── helm/
-│   └── sre-reliability-lab/
-├── k8s/
-│   ├── deployment.yaml
-│   └── service.yaml
-├── terraform/
-│   └── main.tf
-├── .dockerignore
-├── .gitignore
-├── Dockerfile
-├── LOCKED_SCOPE.md
-├── README.md
-└── requirements.txt
+```bash
+kubectl set env deployment/sre-reliability-lab \
+  -n sre-lab \
+  FAIL_MODE=true
 ```
 
-## Engineering takeaway
-
-This lab intentionally connects deployment work to the operational responsibilities that follow it:
+In failure mode:
 
 ```text
-Deploy
-  |
-  v
-Observe
-  |
-  v
-Define SLO
-  |
-  v
-Detect elevated errors
-  |
-  v
-Alert
-  |
-  v
-Investigate
-  |
-  v
-Recover
-  |
-  v
-Verify
-  |
-  v
-Document
+/ready -> HTTP 200
+/work  -> HTTP 500
 ```
 
-The project is intentionally small, local, repeatable, and focused on core SRE practices rather than application complexity.
+That lets Prometheus observe application failures while Kubernetes still considers the service ready.
 
-## Cost
+Recover the service with:
 
-The development and reliability lab runs entirely locally using free and open-source tooling.
+```bash
+kubectl set env deployment/sre-reliability-lab \
+  -n sre-lab \
+  FAIL_MODE=false
 
-**Development cost: $0**
+kubectl rollout status deployment/sre-reliability-lab \
+  -n sre-lab \
+  --timeout=120s
+```
+
+After recovery, the exercise verifies the rollout, endpoint behavior, error-rate metric, and alert resolution rather than assuming the change worked.
+
+## Reliability and tradeoffs
+
+**Application failure:** the lab can return controlled HTTP 500 responses from `/work` without failing readiness. This is useful for testing error-rate monitoring, but it is intentionally synthetic rather than a simulation of every real production failure mode.
+
+**Health checks:** `/health` and `/ready` are separate endpoints so process health and readiness can be reasoned about independently. In a production service, readiness would likely include carefully chosen dependency checks rather than only local application state.
+
+**SLO scope:** the 99% SLO measures successful `/work` responses. It is deliberately narrow and easy to explain. A production service would usually define additional latency, dependency, and user-journey objectives.
+
+**Alert sensitivity:** the `HighErrorRate` rule uses a short 2-minute window with a 1-minute hold because this is a low-traffic local lab. Those values would need to be tuned against real traffic patterns before production use.
+
+**Infrastructure:** Terraform manages the existing `sre-lab` namespace rather than provisioning the entire local cluster. This keeps the IaC exercise focused on adopting existing infrastructure into state without pretending the project has a full production platform layer.
+
+**Monitoring stack:** `kube-prometheus-stack` gives the lab Prometheus, Grafana, Alertmanager, kube-state-metrics, and node-exporter with minimal setup. It is excellent for a local lab, but it is not meant to represent a complete production observability architecture.
+
+**Cost and portability:** everything runs locally with free and open-source tooling. That keeps the lab repeatable and avoids cloud costs, but it also means the project does not demonstrate managed Kubernetes, cloud IAM, or production networking.
+
+Operational documentation lives in:
+
+```text
+docs/
+├── RUNBOOK.md
+└── POSTMORTEM.md
+```
+
+## Verified outcomes
+
+The completed exercise demonstrates the full alert and recovery lifecycle:
+
+```text
+Inactive -> Pending -> Firing -> Resolved
+```
+
+During the controlled incident, sustained HTTP 500 traffic caused `HighErrorRate` to reach the firing state. After `FAIL_MODE` was disabled and the Prometheus lookback window cleared, the alert returned to an inactive state.
+
+The lab also adopted the existing `sre-lab` namespace into Terraform state and verified it with:
+
+```text
+No changes. Your infrastructure matches the configuration.
+```
+
+These are functional reliability checks rather than performance benchmarks. I have not included throughput or latency claims because this project was built to exercise operations, observability, and recovery rather than benchmark the FastAPI service.
+
+## What I'd do next
+
+- Add automated failure scenarios so the alert-and-recovery path can be exercised repeatedly instead of relying on manual `kubectl` steps.
+- Add distributed tracing and a small dependency so the lab can practice diagnosing failures across service boundaries, not only inside one application.
+- Move the same reliability workflow to a small cloud environment and add IAM, managed networking, and cloud-specific operational controls while keeping the local version available for $0 practice.
+
+## Reference
+
+The application exposes:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Liveness check |
+| `GET /ready` | Readiness check |
+| `GET /work` | Workload endpoint used for reliability testing |
+| `GET /metrics` | Prometheus metrics endpoint |
+
+Prometheus metrics include:
+
+- `sre_lab_requests_total`
+- `sre_lab_request_duration_seconds`
+
+The availability SLI is based on successful `/work` requests divided by total `/work` requests over the measurement window.
