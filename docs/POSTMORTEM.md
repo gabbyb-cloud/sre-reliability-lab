@@ -47,12 +47,14 @@ When failure mode is enabled, the `/work` endpoint intentionally returns HTTP 50
 
 ## Resolution
 
-Failure mode was disabled:
+Failure mode was disabled through Helm:
 
 ```bash
-kubectl set env deployment/sre-reliability-lab \
-  -n sre-lab \
-  FAIL_MODE=false
+helm upgrade sre-reliability-lab \
+  ./helm/sre-reliability-lab \
+  --namespace sre-lab \
+  --set image.tag=0.1.0 \
+  --set env.FAIL_MODE=false
 ```
 
 Kubernetes rolled out the updated Deployment.

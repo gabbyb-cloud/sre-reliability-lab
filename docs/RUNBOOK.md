@@ -65,12 +65,14 @@ clamp_min(
 
 ## Recovery
 
-If controlled failure mode is enabled, disable it:
+If controlled failure mode is enabled, disable it with Helm:
 
 ```bash
-kubectl set env deployment/sre-reliability-lab \
-  -n sre-lab \
-  FAIL_MODE=false
+helm upgrade sre-reliability-lab \
+  ./helm/sre-reliability-lab \
+  --namespace sre-lab \
+  --set image.tag=0.1.0 \
+  --set env.FAIL_MODE=false
 ```
 
 Wait for the rollout:
@@ -87,7 +89,12 @@ Verify the new Pod is healthy:
 kubectl get pods -n sre-lab
 ```
 
-Verify `/ready` and `/work` return HTTP 200.
+Verify `/ready` and `/work` return HTTP 200:
+
+```bash
+curl -i http://127.0.0.1:8001/ready
+curl -i http://127.0.0.1:8001/work
+```
 
 ## Resolution Verification
 
