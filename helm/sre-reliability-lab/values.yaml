@@ -11,6 +11,8 @@ image:
   pullPolicy: Never
   tag: "local"
 
+env: {}
+
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
 # This is to override the chart name.
