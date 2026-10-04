@@ -5,7 +5,7 @@ A fully local reliability lab for practicing how to deploy, observe, break, reco
 [![Validate](https://github.com/gabbyb-cloud/sre-reliability-lab/actions/workflows/validate.yml/badge.svg)](https://github.com/gabbyb-cloud/sre-reliability-lab/actions/workflows/validate.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 
-## Why it exists
+## Overview
 
 I built this lab to practice the part of engineering that starts after an application is deployed: knowing whether it is healthy, detecting when behavior degrades, understanding what failed, recovering safely, and checking that the system actually returned to normal.
 
@@ -81,7 +81,7 @@ helm install monitoring \
   --create-namespace
 ```
 
-## Testing and validation
+## Testing and evidence
 
 GitHub Actions validates the repository on pushes and pull requests targeting `main`.
 
@@ -130,7 +130,7 @@ kubectl rollout status deployment/sre-reliability-lab \
 
 After recovery, the exercise verifies the rollout, endpoint behavior, error-rate metric, and alert resolution rather than assuming the change worked.
 
-## Reliability and tradeoffs
+## Tradeoffs and limits
 
 **Application failure:** the lab can return controlled HTTP 500 responses from `/work` without failing readiness. This is useful for testing error-rate monitoring, but it is intentionally synthetic rather than a simulation of every real production failure mode.
 
@@ -154,7 +154,7 @@ docs/
 └── POSTMORTEM.md
 ```
 
-## Verified outcomes
+## Results
 
 The completed exercise demonstrates the full alert and recovery lifecycle:
 
@@ -172,7 +172,7 @@ No changes. Your infrastructure matches the configuration.
 
 These are functional reliability checks rather than performance benchmarks. I have not included throughput or latency claims because this project was built to exercise operations, observability, and recovery rather than benchmark the FastAPI service.
 
-## What I'd do next
+## Next steps
 
 - Add automated failure scenarios so the alert-and-recovery path can be exercised repeatedly instead of relying on manual `kubectl` steps.
 - Add distributed tracing and a small dependency so the lab can practice diagnosing failures across service boundaries, not only inside one application.
