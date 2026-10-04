@@ -96,9 +96,11 @@ The workflow checks:
 The reliability exercise itself is tested by deliberately switching the service into failure mode:
 
 ```bash
-kubectl set env deployment/sre-reliability-lab \
-  -n sre-lab \
-  FAIL_MODE=true
+helm upgrade sre-reliability-lab \
+  ./helm/sre-reliability-lab \
+  --namespace sre-lab \
+  --set image.tag=0.1.0 \
+  --set env.FAIL_MODE=true
 ```
 
 In failure mode:
@@ -113,10 +115,14 @@ That lets Prometheus observe application failures while Kubernetes still conside
 Recover the service with:
 
 ```bash
-kubectl set env deployment/sre-reliability-lab \
-  -n sre-lab \
-  FAIL_MODE=false
+helm upgrade sre-reliability-lab \
+  ./helm/sre-reliability-lab \
+  --namespace sre-lab \
+  --set image.tag=0.1.0 \
+  --set env.FAIL_MODE=false
+```
 
+```bash
 kubectl rollout status deployment/sre-reliability-lab \
   -n sre-lab \
   --timeout=120s
